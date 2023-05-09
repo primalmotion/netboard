@@ -70,6 +70,7 @@ var listenCmd = &cobra.Command{
 		for {
 			select {
 			case data := <-watchChan:
+				log.Println("local clipboard changed. pushing")
 				if err := client.Copy(bytes.NewBuffer(data), addr, tlsConf); err != nil {
 					log.Printf("error sending data: %s", err)
 				}
