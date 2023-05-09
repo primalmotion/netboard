@@ -40,7 +40,7 @@ func Copy(data io.Reader, url string, tlsConfig *tls.Config) error {
 
 func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte {
 
-	ch := make(chan []byte)
+	ch := make(chan []byte, 512)
 
 	go func() {
 		client := &http.Client{
@@ -110,7 +110,7 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 				case <-ctx.Done():
 					return
 				default:
-					log.Println("unaable to process received data: channel full")
+					log.Println("unable to process received data: channel full")
 				}
 
 			}
