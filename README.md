@@ -8,6 +8,11 @@ The server uses chunked http encoding to push data to client, and while it is
 easier to handle the client part with the netboard client, it's perfectly
 possible to integrate it with anything else, like good old curl.
 
+> NOTE: netboard is NOT multi tenant. While it is possible to add it if there is
+> any interest in the matter, for now it just assumes that anyone connecting
+> with a valid certificate is willing to get its clipboard sync with the rest of
+> the instance.
+
 ## Installation
 
 ### Getting the software
