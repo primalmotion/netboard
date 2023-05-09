@@ -44,10 +44,13 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 		}
 
 		id := computeId(r)
-		log.Printf("client %s", id)
 
 		dispatch.Register(id)
-		defer dispatch.Unregister(id)
+		log.Printf("client registered: %s", id)
+		defer func() {
+			dispatch.Unregister(id)
+			log.Printf("client unregistered: %s", id)
+		}()
 
 		ch := dispatch.GetChannel(id)
 

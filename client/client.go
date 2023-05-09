@@ -58,6 +58,12 @@ func Paste(url string, tlsConfig *tls.Config, command string, args ...string) er
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unable to connect: %s", resp.Status)
+	}
+
+	log.Println("connected and waiting for data")
+
 	buf := make([]byte, 1024)
 	for {
 		var chunk []byte

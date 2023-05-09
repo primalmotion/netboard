@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -27,7 +26,6 @@ func (d *dispatcher) Register(c string) {
 	defer d.Unlock()
 
 	d.clients[c] = make(chan []byte)
-	fmt.Println("registered", c)
 }
 
 func (d *dispatcher) Unregister(c string) {
@@ -40,7 +38,6 @@ func (d *dispatcher) Unregister(c string) {
 
 	close(d.clients[c])
 	delete(d.clients, c)
-	fmt.Println("unregistered", c)
 }
 
 func (d *dispatcher) Dispatch(srcID string, data []byte) {
