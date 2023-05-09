@@ -16,9 +16,9 @@ import (
 	"golang.design/x/clipboard"
 )
 
-var clientCmd = &cobra.Command{
-	Use:           "client",
-	Short:         "Send data to server",
+var listenCmd = &cobra.Command{
+	Use:           "listen",
+	Short:         "Sync data between clipboard and server",
 	Args:          cobra.MaximumNArgs(0),
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -27,12 +27,12 @@ var clientCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		addr := viper.GetString("client.url")
-		certPath := os.ExpandEnv(viper.GetString("client.cert"))
-		certKeyPath := os.ExpandEnv(viper.GetString("client.cert-key"))
-		certKeyPass := viper.GetString("client.cert-key-pass")
-		serverCAPath := os.ExpandEnv(viper.GetString("client.server-ca"))
-		skipVerify := viper.GetBool("client.insecure-skip-verify")
+		addr := viper.GetString("listen.url")
+		certPath := os.ExpandEnv(viper.GetString("listen.cert"))
+		certKeyPath := os.ExpandEnv(viper.GetString("listen.cert-key"))
+		certKeyPass := viper.GetString("listen.cert-key-pass")
+		serverCAPath := os.ExpandEnv(viper.GetString("listen.server-ca"))
+		skipVerify := viper.GetBool("listen.insecure-skip-verify")
 
 		x509Cert, x509Key, err := tglib.ReadCertificatePEM(certPath, certKeyPath, certKeyPass)
 		if err != nil {
@@ -95,21 +95,21 @@ var clientCmd = &cobra.Command{
 }
 
 func init() {
-	clientCmd.Flags().StringP("client.url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
-	viper.BindPFlag("client.url", serverCmd.Flags().Lookup("url"))
+	listenCmd.Flags().StringP("listen.url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
+	viper.BindPFlag("listen.url", serverCmd.Flags().Lookup("url"))
 
-	clientCmd.Flags().StringP("client.cert", "c", "", "Path to the client public key")
-	viper.BindPFlag("client.cert", serverCmd.Flags().Lookup("cert"))
+	listenCmd.Flags().StringP("listen.cert", "c", "", "Path to the client public key")
+	viper.BindPFlag("listen.cert", serverCmd.Flags().Lookup("cert"))
 
-	clientCmd.Flags().StringP("client.cert-key", "k", "", "Path to the client private key")
-	viper.BindPFlag("client.cert-key", serverCmd.Flags().Lookup("cert-key"))
+	listenCmd.Flags().StringP("listen.cert-key", "k", "", "Path to the client private key")
+	viper.BindPFlag("listen.cert-key", serverCmd.Flags().Lookup("cert-key"))
 
-	clientCmd.Flags().StringP("client.cert-key-pass", "p", "", "Optional client key passphrase")
-	viper.BindPFlag("client.cert-key-pass", serverCmd.Flags().Lookup("cert-key-pass"))
+	listenCmd.Flags().StringP("listen.cert-key-pass", "p", "", "Optional client key passphrase")
+	viper.BindPFlag("listen.cert-key-pass", serverCmd.Flags().Lookup("cert-key-pass"))
 
-	clientCmd.Flags().StringP("client.server-ca", "C", "", "Path to the server certificate CA")
-	viper.BindPFlag("client.server-ca", serverCmd.Flags().Lookup("server-ca"))
+	listenCmd.Flags().StringP("listen.server-ca", "C", "", "Path to the server certificate CA")
+	viper.BindPFlag("listen.server-ca", serverCmd.Flags().Lookup("server-ca"))
 
-	clientCmd.Flags().Bool("client.insecure-skip-verify", false, "Skip server CA validation. this is not secure")
-	viper.BindPFlag("client.insecure-skip-verify", serverCmd.Flags().Lookup("insecure-skip-verify"))
+	listenCmd.Flags().Bool("listen.insecure-skip-verify", false, "Skip server CA validation. this is not secure")
+	viper.BindPFlag("listen.insecure-skip-verify", serverCmd.Flags().Lookup("insecure-skip-verify"))
 }

@@ -45,7 +45,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		serverCmd,
-		clientCmd,
+		listenCmd,
 	)
 
 	mainCtx, cancelFunc := context.WithCancel(context.Background())
