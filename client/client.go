@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -32,6 +33,8 @@ func Copy(url string, tlsConfig *tls.Config) error {
 	if resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("server rejected the request: %s", resp.Status)
 	}
+
+	log.Println("data dispatched")
 
 	return nil
 }
@@ -90,5 +93,7 @@ func Paste(url string, tlsConfig *tls.Config, command string, args ...string) er
 		if err := cmd.Wait(); err != nil {
 			return fmt.Errorf("unable to run command %s: %w", command, err)
 		}
+
+		log.Println("data received")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -27,7 +28,10 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 		encoded := base64.RawURLEncoding.EncodeToString(data)
 		encoded = encoded + ","
 
-		dispatch.Dispatch([]byte(encoded))
+		id := computeId(r)
+		log.Printf("dispatched data from %s", id)
+
+		dispatch.Dispatch(id, []byte(encoded))
 		w.WriteHeader(http.StatusNoContent)
 	})
 
@@ -39,10 +43,13 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 			return
 		}
 
-		dispatch.Register(r.RemoteAddr)
-		defer dispatch.Unregister(r.RemoteAddr)
+		id := computeId(r)
+		log.Printf("client %s", id)
 
-		ch := dispatch.GetChannel(r.RemoteAddr)
+		dispatch.Register(id)
+		defer dispatch.Unregister(id)
+
+		ch := dispatch.GetChannel(id)
 
 		for {
 			select {
@@ -57,4 +64,8 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 	})
 
 	return server.ListenAndServeTLS("", "")
+}
+
+func computeId(r *http.Request) string {
+	return r.RemoteAddr
 }

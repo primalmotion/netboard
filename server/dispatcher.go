@@ -8,7 +8,7 @@ import (
 type Dispatcher interface {
 	Register(string)
 	Unregister(string)
-	Dispatch([]byte)
+	Dispatch(string, []byte)
 	GetChannel(string) chan []byte
 }
 
@@ -43,11 +43,14 @@ func (d *dispatcher) Unregister(c string) {
 	fmt.Println("unregistered", c)
 }
 
-func (d *dispatcher) Dispatch(data []byte) {
+func (d *dispatcher) Dispatch(srcID string, data []byte) {
 	d.RLock()
 	defer d.RUnlock()
 
-	for _, c := range d.clients {
+	for id, c := range d.clients {
+		if srcID == id {
+			continue
+		}
 		select {
 		case c <- data:
 		default:
