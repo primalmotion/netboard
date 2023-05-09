@@ -1,6 +1,6 @@
 MAKEFLAG += --warn-undefined-variables
 
-BIN = monocol
+BIN = netboard
 
 PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin
