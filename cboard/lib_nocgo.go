@@ -5,7 +5,6 @@ package cboard
 import "log"
 
 // / NewLibClipboardManager returns an error.
-func NewLibClipboardManager() ClipboardManager {
-	log.Fatal("lib mode is not supported on this platform. Try another mode")
-	return nil
+func NewLibClipboardManager() (ClipboardManager, error) {
+	return nil, fmt.Errorf("lib mode is not supported on this platform. try another mode")
 }

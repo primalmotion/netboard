@@ -13,8 +13,17 @@ type toolsClipboardManager struct {
 
 // NewToolsClipboardManager returns a new ClipboardManager
 // using wl-clipboard underneath.
-func NewToolsClipboardManager() ClipboardManager {
-	return &toolsClipboardManager{}
+func NewToolsClipboardManager() (ClipboardManager, error) {
+
+	if _, err := exec.LookPath("wl-copy"); err != nil {
+		return nil, fmt.Errorf("unable to find wl-copy binary: either install wl-clipboard or try another mode")
+	}
+
+	if _, err := exec.LookPath("wl-paste"); err != nil {
+		return nil, fmt.Errorf("unable to find wl-paste binary: either install wl-clipboard or try another mode")
+	}
+
+	return &toolsClipboardManager{}, nil
 }
 
 func (c *toolsClipboardManager) Read() ([]byte, error) {

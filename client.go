@@ -72,10 +72,16 @@ var listenCmd = &cobra.Command{
 
 		switch mode {
 		case "lib":
-			cb = cboard.NewLibClipboardManager()
+			cb, err = cboard.NewLibClipboardManager()
+			if err != nil {
+				log.Fatalf("unable to use lib mode: %s", err)
+			}
 			log.Println("using lib mode")
 		case "wl-clipboard":
-			cb = cboard.NewToolsClipboardManager()
+			cb, err = cboard.NewToolsClipboardManager()
+			if err != nil {
+				log.Fatalf("unable to use wl-clipboard mode: %s", err)
+			}
 			log.Println("using wl-clipboard mode")
 		default:
 			log.Fatalf("unknown mode %s", mode)
