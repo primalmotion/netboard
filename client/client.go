@@ -57,7 +57,6 @@ func Listen(url string, tlsConfig *tls.Config) (chan []byte, error) {
 		close(ch)
 		return nil, fmt.Errorf("unable to send request: %w", err)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		close(ch)
@@ -67,6 +66,8 @@ func Listen(url string, tlsConfig *tls.Config) (chan []byte, error) {
 	log.Println("connected and waiting for data")
 
 	go func() {
+		defer resp.Body.Close()
+
 		buf := make([]byte, 1024)
 		for {
 			var chunk []byte
