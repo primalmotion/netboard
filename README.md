@@ -1,6 +1,6 @@
-# NetBoard
+# Netboard
 
-NetBoard is a client/server application that allows to share your clipboard
+Netboard is a client/server application that allows to share your clipboard
 between different devices. It works by deploying a server, then running client
 on your devices to sync the clipboard.
 
@@ -10,8 +10,8 @@ possible to integrate it with anything else, like good old curl.
 
 > NOTE: netboard is NOT multi tenant. While it is possible to add it if there is
 > any interest in the matter, for now it just assumes that anyone connecting
-> with a valid certificate is willing to get its clipboard sync with the rest of
-> the instance.
+> with a valid certificate is willing to get its clipboard synchronized with the
+> rest of the instance.
 
 ## Installation
 
@@ -31,7 +31,7 @@ yay -S netboard-git
 
 ### Certificates
 
-Netboard uses mutual tls to authenticate the clients. This is not optional, and
+Netboard uses mutual TLS to authenticate the clients. This is not optional, and
 you must generate several certificates:
 
 - one certificate for the server (https)
@@ -81,7 +81,7 @@ tg cert \
 
 Copy over the `netboard-server-cert.pem` and `netboard-server-key.pem`, as well
 as the `netboard-client-ca-cert.pem` to the machine hosting the server. We will
-put them in /etc/netboard. Then write a `config.yaml` file with the following
+put them in `/etc/netboard`. Then write a `config.yaml` file with the following
 content:
 
 ```yaml
@@ -99,8 +99,8 @@ netboard server
 
 ### Clients
 
-Copy the client certificate to the approriate devices, in ~/.config/netboard,
-then write a config.yaml file with the following content:
+Copy the client certificate to the appropriate devices, in `~/.config/netboard`,
+then write a `config.yaml` file with the following content:
 
 ```yaml
 listen:
