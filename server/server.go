@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -29,7 +30,7 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 		encoded = encoded + ","
 
 		id := computeId(r)
-		log.Printf("dispatched data from %s", id)
+		log.Printf("dispatched data from: %s", id)
 
 		dispatch.Dispatch(id, []byte(encoded))
 		w.WriteHeader(http.StatusNoContent)
@@ -70,5 +71,6 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 }
 
 func computeId(r *http.Request) string {
-	return r.RemoteAddr
+	cert := r.TLS.PeerCertificates[0]
+	return fmt.Sprintf("%02X", sha256.Sum256(cert.Raw)) // #nosec
 }
