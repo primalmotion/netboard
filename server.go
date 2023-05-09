@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log"
 	"os"
 
 	"git.sr.st/~primalmotion/netboard/server"
@@ -17,6 +18,12 @@ var serverCmd = &cobra.Command{
 	Short:         "Run the server",
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
+			return err
+		}
+		return viper.BindPFlags(cmd.Flags())
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		listenAddr := viper.GetString("server.listen")
@@ -25,7 +32,7 @@ var serverCmd = &cobra.Command{
 		certKeyPass := viper.GetString("server.cert-key-pass")
 		clientCAPath := os.ExpandEnv(viper.GetString("server.client-ca"))
 
-		fmt.Println("Server is listening on:", listenAddr)
+		log.Println("Server is listening on:", listenAddr)
 
 		x509Cert, x509Key, err := tglib.ReadCertificatePEM(certPath, certKeyPath, certKeyPass)
 		if err != nil {
@@ -57,17 +64,17 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	serverCmd.Flags().StringP("listen", "l", ":8989", "The listen address of the server")
-	viper.BindPFlag("server.listen", serverCmd.Flags().Lookup("listen"))
+	_ = viper.BindPFlag("server.listen", serverCmd.Flags().Lookup("listen"))
 
 	serverCmd.Flags().StringP("cert", "c", "", "path to the server public key")
-	viper.BindPFlag("server.cert", serverCmd.Flags().Lookup("cert"))
+	_ = viper.BindPFlag("server.cert", serverCmd.Flags().Lookup("cert"))
 
 	serverCmd.Flags().StringP("cert-key", "k", "", "path to the server private key")
-	viper.BindPFlag("server.cert-key", serverCmd.Flags().Lookup("cert-key"))
+	_ = viper.BindPFlag("server.cert-key", serverCmd.Flags().Lookup("cert-key"))
 
 	serverCmd.Flags().StringP("cert-key-pass", "p", "", "optional server key passphrase")
-	viper.BindPFlag("server.cert-key-pass", serverCmd.Flags().Lookup("cert-key-pass"))
+	_ = viper.BindPFlag("server.cert-key-pass", serverCmd.Flags().Lookup("cert-key-pass"))
 
 	serverCmd.Flags().StringP("client-ca", "C", "", "path to the client certificate CA")
-	viper.BindPFlag("server.client-ca", serverCmd.Flags().Lookup("client-ca"))
+	_ = viper.BindPFlag("server.client-ca", serverCmd.Flags().Lookup("client-ca"))
 }

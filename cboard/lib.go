@@ -9,6 +9,8 @@ import (
 type libClipboardManager struct {
 }
 
+// NewLibClipboardManager returns a new ClipboardManager
+// base on golang.design/x/clipboard
 func NewLibClipboardManager() ClipboardManager {
 	return &libClipboardManager{}
 }

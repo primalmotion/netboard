@@ -10,8 +10,10 @@ import (
 	"net/http"
 )
 
+// Serve starts the server that will handle and dispatch changes
+// to of the clipboard.
 func Serve(listenAddr string, tlsConf *tls.Config) error {
-	dispatch := NewDispatcher()
+	dispatch := newDispatcher()
 
 	server := http.Server{
 		Addr:      listenAddr,
@@ -24,12 +26,11 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 		if err != nil {
 			http.Error(w, fmt.Sprintf("unable to read body: %s", err), http.StatusBadRequest)
 		}
-		defer r.Body.Close()
 
 		encoded := base64.RawURLEncoding.EncodeToString(data)
 		encoded = encoded + ","
 
-		id := computeId(r)
+		id := computeID(r)
 		log.Printf("dispatched data from: %s", id)
 
 		dispatch.Dispatch(id, []byte(encoded))
@@ -44,7 +45,7 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 			return
 		}
 
-		id := computeId(r)
+		id := computeID(r)
 
 		dispatch.Register(id)
 		log.Printf("client registered: %s", id)
@@ -61,7 +62,9 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 				flusher.Flush()
 				return
 			case c := <-ch:
-				w.Write(c)
+				if _, err := w.Write(c); err != nil {
+					log.Printf("unable to write chunk to client %s: %s", id, err)
+				}
 				flusher.Flush()
 			}
 		}
@@ -70,7 +73,7 @@ func Serve(listenAddr string, tlsConf *tls.Config) error {
 	return server.ListenAndServeTLS("", "")
 }
 
-func computeId(r *http.Request) string {
+func computeID(r *http.Request) string {
 	cert := r.TLS.PeerCertificates[0]
 	return fmt.Sprintf("%02X", sha256.Sum256(cert.Raw)) // #nosec
 }

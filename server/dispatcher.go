@@ -4,23 +4,17 @@ import (
 	"sync"
 )
 
-type Dispatcher interface {
-	Register(string)
-	Unregister(string)
-	Dispatch(string, []byte)
-	GetChannel(string) chan []byte
-}
-
 type dispatcher struct {
 	sync.RWMutex
 	clients map[string]chan []byte
 }
 
-func NewDispatcher() Dispatcher {
+func newDispatcher() *dispatcher {
 	return &dispatcher{
 		clients: make(map[string]chan []byte),
 	}
 }
+
 func (d *dispatcher) Register(c string) {
 	d.Lock()
 	defer d.Unlock()

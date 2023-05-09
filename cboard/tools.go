@@ -11,6 +11,8 @@ import (
 type toolsClipboardManager struct {
 }
 
+// NewToolsClipboardManager returns a new ClipboardManager
+// using wl-clipboard underneath.
 func NewToolsClipboardManager() ClipboardManager {
 	return &toolsClipboardManager{}
 }
@@ -22,7 +24,7 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to init command: %w", err)
 	}
-	defer stdout.Close()
+	defer stdout.Close() // nolint
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("unable to start command: %w", err)
@@ -33,7 +35,8 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 		return nil, fmt.Errorf("unable to read stdin: %w", err)
 	}
 
-	cmd.Wait()
+	// wl-paste returns 1 when the clipboard is empty..
+	_ = cmd.Wait()
 
 	return data, nil
 }
@@ -45,7 +48,7 @@ func (c *toolsClipboardManager) Write(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("unable to init command: %w", err)
 	}
-	defer stdin.Close()
+	defer stdin.Close() //nolint
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("unable to start command: %w", err)
@@ -54,7 +57,7 @@ func (c *toolsClipboardManager) Write(data []byte) error {
 	if _, err := stdin.Write(data); err != nil {
 		return fmt.Errorf("unable to write stdin: %w", err)
 	}
-	stdin.Close()
+	stdin.Close() //nolint
 
 	return cmd.Wait()
 }

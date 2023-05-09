@@ -11,7 +11,9 @@ import (
 	"time"
 )
 
-func Copy(data io.Reader, url string, tlsConfig *tls.Config) error {
+// Send sends the content of the given reader to the given url
+// using the given tls config.
+func Send(data io.Reader, url string, tlsConfig *tls.Config) error {
 
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -38,6 +40,9 @@ func Copy(data io.Reader, url string, tlsConfig *tls.Config) error {
 	return nil
 }
 
+// Listen listens for new updates from the server.
+// It will stay connected, and retry connection until the
+// given context expires.
 func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte {
 
 	ch := make(chan []byte, 512)
@@ -77,7 +82,7 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 				log.Printf("server rejected the request: %s", err)
 				continue
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() // nolint
 
 			buf := make([]byte, 1024)
 
@@ -106,13 +111,12 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 
 				select {
 				case ch <- decoded[:n]:
-					log.Println("data received", string(decoded[:n]))
+					log.Println("data received: sent to channel")
 				case <-ctx.Done():
 					return
 				default:
-					log.Println("unable to process received data: channel full")
+					log.Println("data received: channel full")
 				}
-
 			}
 		}
 	}()

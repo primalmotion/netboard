@@ -36,7 +36,20 @@ func main() {
 		SilenceUsage:     true,
 		SilenceErrors:    true,
 		TraverseChildren: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
+				return err
+			}
+			return viper.BindPFlags(cmd.Flags())
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			if viper.GetBool("version") {
+				fmt.Printf("netboard %s (%s)\n", version, commit)
+				os.Exit(0)
+			}
+		},
 	}
+	rootCmd.Flags().Bool("version", false, "Show version")
 
 	rootCmd.AddCommand(
 		serverCmd,

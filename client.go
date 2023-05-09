@@ -22,6 +22,12 @@ var listenCmd = &cobra.Command{
 	Args:          cobra.MaximumNArgs(0),
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
+			return err
+		}
+		return viper.BindPFlags(cmd.Flags())
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		addr := viper.GetString("listen.url")
@@ -86,7 +92,7 @@ var listenCmd = &cobra.Command{
 			select {
 			case data := <-watchChan:
 				log.Println("local clipboard changed. pushing")
-				if err := client.Copy(bytes.NewBuffer(data), addr, tlsConf); err != nil {
+				if err := client.Send(bytes.NewBuffer(data), addr, tlsConf); err != nil {
 					log.Printf("error sending data: %s", err)
 				}
 
@@ -99,7 +105,10 @@ var listenCmd = &cobra.Command{
 
 				if !bytes.Equal(currentData, data) {
 					log.Println("local clipboard updated")
-					cb.Write(data)
+					if err := cb.Write(data); err != nil {
+						log.Printf("unable to write to local clipboard: %s", err)
+						continue
+					}
 				}
 
 			case <-cmd.Context().Done():
@@ -111,23 +120,23 @@ var listenCmd = &cobra.Command{
 
 func init() {
 	listenCmd.Flags().StringP("url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
-	viper.BindPFlag("listen.url", listenCmd.Flags().Lookup("url"))
+	_ = viper.BindPFlag("listen.url", listenCmd.Flags().Lookup("url"))
 
 	listenCmd.Flags().StringP("cert", "c", "", "Path to the client public key")
-	viper.BindPFlag("listen.cert", listenCmd.Flags().Lookup("cert"))
+	_ = viper.BindPFlag("listen.cert", listenCmd.Flags().Lookup("cert"))
 
 	listenCmd.Flags().StringP("cert-key", "k", "", "Path to the client private key")
-	viper.BindPFlag("listen.cert-key", listenCmd.Flags().Lookup("cert-key"))
+	_ = viper.BindPFlag("listen.cert-key", listenCmd.Flags().Lookup("cert-key"))
 
 	listenCmd.Flags().StringP("cert-key-pass", "p", "", "Optional client key passphrase")
-	viper.BindPFlag("listen.cert-key-pass", listenCmd.Flags().Lookup("cert-key-pass"))
+	_ = viper.BindPFlag("listen.cert-key-pass", listenCmd.Flags().Lookup("cert-key-pass"))
 
 	listenCmd.Flags().StringP("server-ca", "C", "", "Path to the server certificate CA")
-	viper.BindPFlag("listen.server-ca", listenCmd.Flags().Lookup("server-ca"))
+	_ = viper.BindPFlag("listen.server-ca", listenCmd.Flags().Lookup("server-ca"))
 
 	listenCmd.Flags().Bool("insecure-skip-verify", false, "Skip server CA validation. this is not secure")
-	viper.BindPFlag("listen.insecure-skip-verify", listenCmd.Flags().Lookup("insecure-skip-verify"))
+	_ = viper.BindPFlag("listen.insecure-skip-verify", listenCmd.Flags().Lookup("insecure-skip-verify"))
 
 	listenCmd.Flags().String("mode", "lib", "Select the mode to handle clipboard. lib or wl-clipboard")
-	viper.BindPFlag("listen.mode", listenCmd.Flags().Lookup("mode"))
+	_ = viper.BindPFlag("listen.mode", listenCmd.Flags().Lookup("mode"))
 }
