@@ -1,12 +1,14 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 func Copy(data io.Reader, url string, tlsConfig *tls.Config) error {
@@ -36,69 +38,81 @@ func Copy(data io.Reader, url string, tlsConfig *tls.Config) error {
 	return nil
 }
 
-func Listen(url string, tlsConfig *tls.Config) (chan []byte, error) {
+func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte {
 
 	ch := make(chan []byte)
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
-	}
-
-	r, err := http.NewRequest(http.MethodGet, url+"/paste", nil)
-	if err != nil {
-		close(ch)
-		return nil, fmt.Errorf("unable to build request: %w", err)
-	}
-
-	resp, err := client.Do(r)
-	if err != nil {
-		close(ch)
-		return nil, fmt.Errorf("unable to send request: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		close(ch)
-		return nil, fmt.Errorf("server rejected the request: %w", err)
-	}
-
-	log.Println("connected and waiting for data")
-
 	go func() {
-		defer resp.Body.Close()
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}
 
-		buf := make([]byte, 1024)
+		isReconnect := false
+
+	MAIN:
 		for {
-			var chunk []byte
-			for {
-				n, err := resp.Body.Read(buf)
-				if err != nil {
-					close(ch)
-					log.Printf("error: unable to read body: %s", err)
-					return
-				}
 
-				if buf[n-1] == ',' {
-					chunk = append(chunk, buf[:n-1]...)
-					break
-				}
-				chunk = append(chunk, buf[:n]...)
+			if isReconnect {
+				time.Sleep(5 * time.Second)
 			}
+			isReconnect = true
 
-			decoded := make([]byte, len(chunk))
-			n, err := base64.RawURLEncoding.Decode(decoded, chunk)
+			r, err := http.NewRequestWithContext(ctx, http.MethodGet, url+"/paste", nil)
 			if err != nil {
-				log.Printf("error: unable to decode body: %s", err)
-				close(ch)
-				return
+				log.Printf("unable to build request: %s", err)
+				continue
 			}
 
-			ch <- decoded[:n]
+			log.Println("connected and waiting for data")
 
-			log.Println("data received")
+			resp, err := client.Do(r)
+			if err != nil {
+				log.Printf("unable to send request: %s", err)
+				continue
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("server rejected the request: %s", err)
+				continue
+			}
+			defer resp.Body.Close()
+
+			buf := make([]byte, 1024)
+
+			for {
+				var chunk []byte
+				for {
+					n, err := resp.Body.Read(buf)
+					if err != nil {
+						log.Printf("error: unable to read body: %s", err)
+						continue MAIN
+					}
+
+					if buf[n-1] == ',' {
+						chunk = append(chunk, buf[:n-1]...)
+						break
+					}
+					chunk = append(chunk, buf[:n]...)
+				}
+
+				decoded := make([]byte, len(chunk))
+				n, err := base64.RawURLEncoding.Decode(decoded, chunk)
+				if err != nil {
+					log.Printf("error: unable to decode body: %s", err)
+					continue
+				}
+
+				select {
+				case ch <- decoded[:n]:
+				default:
+				}
+
+				log.Println("data received")
+			}
 		}
 	}()
 
-	return ch, nil
+	return ch
 }

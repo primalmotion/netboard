@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"git.sr.st/~primalmotion/netboard/client"
 	"github.com/spf13/cobra"
@@ -65,32 +64,27 @@ var listenCmd = &cobra.Command{
 			InsecureSkipVerify: skipVerify,
 		}
 
-		go func() {
-			ch := clipboard.Watch(cmd.Context(), clipboard.FmtText)
-			for data := range ch {
+		watchChan := clipboard.Watch(cmd.Context(), clipboard.FmtText)
+		listenChan := client.Listen(cmd.Context(), addr, tlsConf)
+
+		for {
+			select {
+			case data := <-watchChan:
 				if err := client.Copy(bytes.NewBuffer(data), addr, tlsConf); err != nil {
 					log.Printf("error sending data: %s", err)
 				}
-			}
-		}()
 
-		go func() {
-			for {
-				ch, err := client.Listen(addr, tlsConf)
-				if err != nil {
-					log.Printf("error during stream (retrying in 5sec): %s", err)
-					time.Sleep(5 * time.Second)
-				}
-
-				for data := range ch {
+			case data := <-listenChan:
+				currentData := clipboard.Read(clipboard.FmtText)
+				if !bytes.Equal(currentData, data) {
+					log.Println("local clipboard updated")
 					clipboard.Write(clipboard.FmtText, data)
 				}
+
+			case <-cmd.Context().Done():
+				return nil
 			}
-		}()
-
-		<-cmd.Context().Done()
-
-		return nil
+		}
 	},
 }
 
