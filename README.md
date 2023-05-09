@@ -1,7 +1,7 @@
 # NetBoard
 
 NetBoard is a client/server application that allows to share your clipboard
-betwen different devices. It works by deploying a server, then running client
+between different devices. It works by deploying a server, then running client
 on your devices to sync the clipboard.
 
 The server uses chunked http encoding to push data to client, and while it is
