@@ -14,7 +14,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.design/x/clipboard"
 )
 
 var (
@@ -29,10 +28,6 @@ var (
 
 func main() {
 
-	err := clipboard.Init()
-	if err != nil {
-		log.Fatalf("unable to initialize clipboard: %s", err)
-	}
 	cobra.OnInitialize(initCobra)
 
 	rootCmd := &cobra.Command{

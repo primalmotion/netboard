@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/tg/tglib"
+	"golang.design/x/clipboard"
 )
 
 var listenCmd = &cobra.Command{
@@ -21,9 +22,6 @@ var listenCmd = &cobra.Command{
 	Args:          cobra.MaximumNArgs(0),
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return viper.BindPFlags(cmd.Flags())
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		addr := viper.GetString("listen.url")
@@ -69,9 +67,14 @@ var listenCmd = &cobra.Command{
 
 		switch mode {
 		case "lib":
+			if err := clipboard.Init(); err != nil {
+				log.Fatalf("unable to initialize clipboard: %s", err)
+			}
 			cb = cboard.NewLibClipboardManager()
+			log.Println("using lib mode")
 		case "wl-clipboard":
 			cb = cboard.NewToolsClipboardManager()
+			log.Println("using wl-clipboard mode")
 		default:
 			log.Fatalf("unknown mode %s", mode)
 		}
@@ -107,24 +110,24 @@ var listenCmd = &cobra.Command{
 }
 
 func init() {
-	listenCmd.Flags().StringP("listen.url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
+	listenCmd.Flags().StringP("url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
 	viper.BindPFlag("listen.url", listenCmd.Flags().Lookup("url"))
 
-	listenCmd.Flags().StringP("listen.cert", "c", "", "Path to the client public key")
+	listenCmd.Flags().StringP("cert", "c", "", "Path to the client public key")
 	viper.BindPFlag("listen.cert", listenCmd.Flags().Lookup("cert"))
 
-	listenCmd.Flags().StringP("listen.cert-key", "k", "", "Path to the client private key")
+	listenCmd.Flags().StringP("cert-key", "k", "", "Path to the client private key")
 	viper.BindPFlag("listen.cert-key", listenCmd.Flags().Lookup("cert-key"))
 
-	listenCmd.Flags().StringP("listen.cert-key-pass", "p", "", "Optional client key passphrase")
+	listenCmd.Flags().StringP("cert-key-pass", "p", "", "Optional client key passphrase")
 	viper.BindPFlag("listen.cert-key-pass", listenCmd.Flags().Lookup("cert-key-pass"))
 
-	listenCmd.Flags().StringP("listen.server-ca", "C", "", "Path to the server certificate CA")
+	listenCmd.Flags().StringP("server-ca", "C", "", "Path to the server certificate CA")
 	viper.BindPFlag("listen.server-ca", listenCmd.Flags().Lookup("server-ca"))
 
-	listenCmd.Flags().Bool("listen.insecure-skip-verify", false, "Skip server CA validation. this is not secure")
+	listenCmd.Flags().Bool("insecure-skip-verify", false, "Skip server CA validation. this is not secure")
 	viper.BindPFlag("listen.insecure-skip-verify", listenCmd.Flags().Lookup("insecure-skip-verify"))
 
-	listenCmd.Flags().String("listen.mode", "lib", "Select the mode to handle clipboard. lib or wl-clipboard")
+	listenCmd.Flags().String("mode", "lib", "Select the mode to handle clipboard. lib or wl-clipboard")
 	viper.BindPFlag("listen.mode", listenCmd.Flags().Lookup("mode"))
 }
