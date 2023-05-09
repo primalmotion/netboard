@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -11,12 +13,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/tg/tglib"
+	"golang.design/x/clipboard"
 )
 
 var clientCmd = &cobra.Command{
 	Use:           "client",
 	Short:         "Send data to server",
-	Args:          cobra.MinimumNArgs(1),
+	Args:          cobra.MaximumNArgs(0),
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -30,8 +33,6 @@ var clientCmd = &cobra.Command{
 		certKeyPass := viper.GetString("client.cert-key-pass")
 		serverCAPath := os.ExpandEnv(viper.GetString("client.server-ca"))
 		skipVerify := viper.GetBool("client.insecure-skip-verify")
-		runCmd := viper.GetString("client.cmd")
-		runCmdArgs := viper.GetStringSlice("client.cmd-arg")
 
 		x509Cert, x509Key, err := tglib.ReadCertificatePEM(certPath, certKeyPath, certKeyPass)
 		if err != nil {
@@ -64,20 +65,32 @@ var clientCmd = &cobra.Command{
 			InsecureSkipVerify: skipVerify,
 		}
 
-		switch args[0] {
-		case "copy":
-			return client.Copy(addr, tlsConf)
-		case "paste":
-
-			for {
-				if err := client.Paste(addr, tlsConf, runCmd, runCmdArgs...); err != nil {
-					fmt.Fprintf(os.Stderr, "error during stream (retrying in 5sec): %s\n", err)
-					time.Sleep(5 * time.Second)
+		go func() {
+			ch := clipboard.Watch(cmd.Context(), clipboard.FmtText)
+			for data := range ch {
+				if err := client.Copy(bytes.NewBuffer(data), addr, tlsConf); err != nil {
+					log.Printf("error sending data: %s", err)
 				}
 			}
-		default:
-			panic(fmt.Sprintf("unknown action :%s", args[0]))
-		}
+		}()
+
+		go func() {
+			for {
+				ch, err := client.Listen(addr, tlsConf)
+				if err != nil {
+					log.Printf("error during stream (retrying in 5sec): %s", err)
+					time.Sleep(5 * time.Second)
+				}
+
+				for data := range ch {
+					clipboard.Write(clipboard.FmtText, data)
+				}
+			}
+		}()
+
+		<-cmd.Context().Done()
+
+		return nil
 	},
 }
 
@@ -99,10 +112,4 @@ func init() {
 
 	clientCmd.Flags().Bool("client.insecure-skip-verify", false, "Skip server CA validation. this is not secure")
 	viper.BindPFlag("client.insecure-skip-verify", serverCmd.Flags().Lookup("insecure-skip-verify"))
-
-	clientCmd.Flags().String("client.cmd", "wl-copy", "The command to run on new paste arrival")
-	viper.BindPFlag("client.cmd", serverCmd.Flags().Lookup("cmd"))
-
-	clientCmd.Flags().StringSlice("client.cmd-arg", nil, "Additional arguments to provide to cmd")
-	viper.BindPFlag("client.cmd-arg", serverCmd.Flags().Lookup("cmd-arg"))
 }

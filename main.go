@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.design/x/clipboard"
 )
 
 var (
@@ -25,6 +29,10 @@ var (
 
 func main() {
 
+	err := clipboard.Init()
+	if err != nil {
+		log.Fatalf("unable to initialize clipboard: %s", err)
+	}
 	cobra.OnInitialize(initCobra)
 
 	rootCmd := &cobra.Command{
@@ -40,7 +48,20 @@ func main() {
 		clientCmd,
 	)
 
-	if err := rootCmd.Execute(); err != nil {
+	mainCtx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Reset(syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-signalCh
+		cancelFunc()
+		signal.Stop(signalCh)
+		close(signalCh)
+	}()
+
+	if err := rootCmd.ExecuteContext(mainCtx); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}

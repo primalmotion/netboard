@@ -1,18 +1,15 @@
 package client
 
 import (
-	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"os/exec"
 )
 
-func Copy(url string, tlsConfig *tls.Config) error {
+func Copy(data io.Reader, url string, tlsConfig *tls.Config) error {
 
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -20,7 +17,7 @@ func Copy(url string, tlsConfig *tls.Config) error {
 		},
 	}
 
-	r, err := http.NewRequest(http.MethodPost, url+"/copy", os.Stdin)
+	r, err := http.NewRequest(http.MethodPost, url+"/copy", data)
 	if err != nil {
 		return fmt.Errorf("unable to build request: %w", err)
 	}
@@ -39,7 +36,9 @@ func Copy(url string, tlsConfig *tls.Config) error {
 	return nil
 }
 
-func Paste(url string, tlsConfig *tls.Config, command string, args ...string) error {
+func Listen(url string, tlsConfig *tls.Config) (chan []byte, error) {
+
+	ch := make(chan []byte)
 
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -49,57 +48,56 @@ func Paste(url string, tlsConfig *tls.Config, command string, args ...string) er
 
 	r, err := http.NewRequest(http.MethodGet, url+"/paste", nil)
 	if err != nil {
-		return fmt.Errorf("unable to build request: %w", err)
+		close(ch)
+		return nil, fmt.Errorf("unable to build request: %w", err)
 	}
 
 	resp, err := client.Do(r)
 	if err != nil {
-		return fmt.Errorf("unable to send request: %w", err)
+		close(ch)
+		return nil, fmt.Errorf("unable to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("unable to connect: %s", resp.Status)
+		close(ch)
+		return nil, fmt.Errorf("server rejected the request: %w", err)
 	}
 
 	log.Println("connected and waiting for data")
 
-	buf := make([]byte, 1024)
-	for {
-		var chunk []byte
+	go func() {
+		buf := make([]byte, 1024)
 		for {
-			n, err := resp.Body.Read(buf)
+			var chunk []byte
+			for {
+				n, err := resp.Body.Read(buf)
+				if err != nil {
+					close(ch)
+					log.Printf("error: unable to read body: %s", err)
+					return
+				}
+
+				if buf[n-1] == ',' {
+					chunk = append(chunk, buf[:n-1]...)
+					break
+				}
+				chunk = append(chunk, buf[:n]...)
+			}
+
+			decoded := make([]byte, len(chunk))
+			n, err := base64.RawURLEncoding.Decode(decoded, chunk)
 			if err != nil {
-				return fmt.Errorf("unable to read body: %w", err)
+				log.Printf("error: unable to decode body: %s", err)
+				close(ch)
+				return
 			}
 
-			if buf[n-1] == ',' {
-				chunk = append(chunk, buf[:n-1]...)
-				break
-			}
-			chunk = append(chunk, buf[:n]...)
+			ch <- decoded[:n]
+
+			log.Println("data received")
 		}
+	}()
 
-		decoded := make([]byte, len(chunk))
-		n, err := base64.RawURLEncoding.Decode(decoded, chunk)
-		if err != nil {
-			return fmt.Errorf("unable to decode data: %w", err)
-		}
-
-		cmd := exec.Command(command, args...)
-		stdin, err := cmd.StdinPipe()
-		if err != nil {
-			return fmt.Errorf("unable to execute %s: %w", command, err)
-		}
-
-		cmd.Start()
-		io.Copy(stdin, bytes.NewBuffer(decoded[:n]))
-		stdin.Close()
-
-		if err := cmd.Wait(); err != nil {
-			return fmt.Errorf("unable to run command %s: %w", command, err)
-		}
-
-		log.Println("data received")
-	}
+	return ch, nil
 }
