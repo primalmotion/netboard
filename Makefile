@@ -1,4 +1,6 @@
 MAKEFLAG += --warn-undefined-variables
+PROJECT_BRANCH ?="$(shell git rev-parse --abbrev-ref HEAD)"
+PROJECT_SHA ?= $(shell git rev-parse HEAD)
 
 BIN = netboard
 
@@ -8,7 +10,9 @@ BINDIR = $(PREFIX)/bin
 .PHONY: netboard
 
 netboard:
-	CGO_ENABLED=1 go build -trimpath .
+	CGO_ENABLED=1 go build \
+		-ldflags "-X main.version=$(PROJECT_BRANCH) -X main.commit=$(PROJECT_SHA)" \
+		-trimpath .
 
 default: netboard
 
