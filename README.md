@@ -112,3 +112,15 @@ netboard listen
 
 Repeat the process for every other clients you want to have all their clipboard
 synced.
+
+## Modes
+
+The netboard client can run using 2 modes, controlled by the `--mode` flag:
+
+- `lib`: Uses native clipboard management libraries. This requires CGO and only
+    works partially under Wayland
+- `wl-clipboard`: Uses `wl-copy` and `wl-paste` utilities to handle the
+    clipboard. This only works under Wayland.
+
+More modes may come, as well as a smart way to choose the best for the current
+platform.
