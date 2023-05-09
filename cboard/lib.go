@@ -1,7 +1,10 @@
+//go:build cgo
+
 package cboard
 
 import (
 	"context"
+	"log"
 
 	"golang.design/x/clipboard"
 )
@@ -12,6 +15,11 @@ type libClipboardManager struct {
 // NewLibClipboardManager returns a new ClipboardManager
 // base on golang.design/x/clipboard
 func NewLibClipboardManager() ClipboardManager {
+
+	if err := clipboard.Init(); err != nil {
+		log.Fatalf("unable to initialize clipboard: %s", err)
+	}
+
 	return &libClipboardManager{}
 }
 

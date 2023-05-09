@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/tg/tglib"
-	"golang.design/x/clipboard"
 )
 
 var listenCmd = &cobra.Command{
@@ -73,9 +72,6 @@ var listenCmd = &cobra.Command{
 
 		switch mode {
 		case "lib":
-			if err := clipboard.Init(); err != nil {
-				log.Fatalf("unable to initialize clipboard: %s", err)
-			}
 			cb = cboard.NewLibClipboardManager()
 			log.Println("using lib mode")
 		case "wl-clipboard":
@@ -137,6 +133,6 @@ func init() {
 	listenCmd.Flags().Bool("insecure-skip-verify", false, "Skip server CA validation. this is not secure")
 	_ = viper.BindPFlag("listen.insecure-skip-verify", listenCmd.Flags().Lookup("insecure-skip-verify"))
 
-	listenCmd.Flags().String("mode", "lib", "Select the mode to handle clipboard. lib or wl-clipboard")
+	listenCmd.Flags().String("mode", "wl-clipboard", "Select the mode to handle clipboard. wl-clipboard or lib")
 	_ = viper.BindPFlag("listen.mode", listenCmd.Flags().Lookup("mode"))
 }
