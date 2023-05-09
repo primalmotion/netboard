@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"git.sr.st/~primalmotion/netboard/server"
+	"github.com/primalmotion/netboard/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/tg/tglib"

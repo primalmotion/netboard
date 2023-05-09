@@ -1,4 +1,4 @@
-module git.sr.st/~primalmotion/netboard
+module github.com/primalmotion/netboard
 
 go 1.20
 

@@ -8,8 +8,8 @@ import (
 	"log"
 	"os"
 
-	"git.sr.st/~primalmotion/netboard/cboard"
-	"git.sr.st/~primalmotion/netboard/client"
+	"github.com/primalmotion/netboard/cboard"
+	"github.com/primalmotion/netboard/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/tg/tglib"
