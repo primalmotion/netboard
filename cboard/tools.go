@@ -33,9 +33,7 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 		return nil, fmt.Errorf("unable to read stdin: %w", err)
 	}
 
-	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("unable to wait for command: %w", err)
-	}
+	cmd.Wait()
 
 	return data, nil
 }
@@ -45,16 +43,16 @@ func (c *toolsClipboardManager) Write(data []byte) error {
 	cmd := exec.Command("wl-copy", "--foreground", "--trim-newline")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to init command: %w", err)
 	}
 	defer stdin.Close()
 
 	if err := cmd.Start(); err != nil {
-		return err
+		return fmt.Errorf("unable to start command: %w", err)
 	}
 
 	if _, err := stdin.Write(data); err != nil {
-		return err
+		return fmt.Errorf("unable to write stdin: %w", err)
 	}
 	stdin.Close()
 
