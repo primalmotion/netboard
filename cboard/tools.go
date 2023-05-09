@@ -40,7 +40,7 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 
 func (c *toolsClipboardManager) Write(data []byte) error {
 
-	cmd := exec.Command("wl-copy", "--foreground", "--trim-newline")
+	cmd := exec.Command("wl-copy", "--trim-newline")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("unable to init command: %w", err)
@@ -65,7 +65,7 @@ func (c *toolsClipboardManager) Watch(ctx context.Context) <-chan []byte {
 
 	go func() {
 
-		cmd := exec.Command("wl-paste", "-w", "echo")
+		cmd := exec.Command("wl-paste", "--no-newline", "-w", "echo")
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {

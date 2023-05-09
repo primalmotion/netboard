@@ -106,10 +106,13 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 
 				select {
 				case ch <- decoded[:n]:
+					log.Println("data received", string(decoded[:n]))
+				case <-ctx.Done():
+					return
 				default:
+					log.Println("unaable to process received data: channel full")
 				}
 
-				log.Println("data received")
 			}
 		}
 	}()
