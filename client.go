@@ -19,16 +19,19 @@ var clientCmd = &cobra.Command{
 	Args:          cobra.MinimumNArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return viper.BindPFlags(cmd.Flags())
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		addr := viper.GetString("url")
-		certPath := viper.GetString("cert")
-		certKeyPath := viper.GetString("cert-key")
-		certKeyPass := viper.GetString("cert-key-pass")
-		serverCAPath := viper.GetString("server-ca")
-		skipVerify := viper.GetBool("insecure-skip-verify")
-		runCmd := viper.GetString("cmd")
-		runCmdArgs := viper.GetStringSlice("cmd-arg")
+		addr := viper.GetString("client.url")
+		certPath := os.ExpandEnv(viper.GetString("client.cert"))
+		certKeyPath := os.ExpandEnv(viper.GetString("client.cert-key"))
+		certKeyPass := viper.GetString("client.cert-key-pass")
+		serverCAPath := os.ExpandEnv(viper.GetString("client.server-ca"))
+		skipVerify := viper.GetBool("client.insecure-skip-verify")
+		runCmd := viper.GetString("client.cmd")
+		runCmdArgs := viper.GetStringSlice("client.cmd-arg")
 
 		x509Cert, x509Key, err := tglib.ReadCertificatePEM(certPath, certKeyPath, certKeyPass)
 		if err != nil {
@@ -79,12 +82,27 @@ var clientCmd = &cobra.Command{
 }
 
 func init() {
-	clientCmd.Flags().StringP("url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
-	clientCmd.Flags().StringP("cert", "c", "", "Path to the client public key")
-	clientCmd.Flags().StringP("cert-key", "k", "", "Path to the client private key")
-	clientCmd.Flags().StringP("cert-key-pass", "p", "", "Optional client key passphrase")
-	clientCmd.Flags().StringP("client-ca", "C", "", "Path to the server certificate CA")
-	clientCmd.Flags().Bool("insecure-skip-verify", false, "Skip server CA validation. this is not secure")
-	clientCmd.Flags().String("cmd", "wl-copy", "The command to run on new paste arrival")
-	clientCmd.Flags().StringSlice("cmd-arg", nil, "Additional arguments to provide to cmd")
+	clientCmd.Flags().StringP("client.url", "u", "https://127.0.0.1:8989", "The address of the netboard server")
+	viper.BindPFlag("client.url", serverCmd.Flags().Lookup("url"))
+
+	clientCmd.Flags().StringP("client.cert", "c", "", "Path to the client public key")
+	viper.BindPFlag("client.cert", serverCmd.Flags().Lookup("cert"))
+
+	clientCmd.Flags().StringP("client.cert-key", "k", "", "Path to the client private key")
+	viper.BindPFlag("client.cert-key", serverCmd.Flags().Lookup("cert-key"))
+
+	clientCmd.Flags().StringP("client.cert-key-pass", "p", "", "Optional client key passphrase")
+	viper.BindPFlag("client.cert-key-pass", serverCmd.Flags().Lookup("cert-key-pass"))
+
+	clientCmd.Flags().StringP("client.server-ca", "C", "", "Path to the server certificate CA")
+	viper.BindPFlag("client.server-ca", serverCmd.Flags().Lookup("server-ca"))
+
+	clientCmd.Flags().Bool("client.insecure-skip-verify", false, "Skip server CA validation. this is not secure")
+	viper.BindPFlag("client.insecure-skip-verify", serverCmd.Flags().Lookup("insecure-skip-verify"))
+
+	clientCmd.Flags().String("client.cmd", "wl-copy", "The command to run on new paste arrival")
+	viper.BindPFlag("client.cmd", serverCmd.Flags().Lookup("cmd"))
+
+	clientCmd.Flags().StringSlice("client.cmd-arg", nil, "Additional arguments to provide to cmd")
+	viper.BindPFlag("client.cmd-arg", serverCmd.Flags().Lookup("cmd-arg"))
 }
