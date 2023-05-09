@@ -3,6 +3,7 @@ package cboard
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os/exec"
 )
@@ -19,20 +20,24 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 	cmd := exec.Command("wl-paste", "--no-newline")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to init command: %w", err)
 	}
 	defer stdout.Close()
 
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to start command: %w", err)
 	}
 
 	data, err := io.ReadAll(stdout)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to read stdin: %w", err)
 	}
 
-	return data, cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("unable to wait for command: %w", err)
+	}
+
+	return data, nil
 }
 
 func (c *toolsClipboardManager) Write(data []byte) error {
