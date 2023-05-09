@@ -1,0 +1,31 @@
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+    - '^examples:'
+builds:
+  - id: netboard
+    binary: netboard
+    goos:
+    - linux
+    - freebsd
+    - darwin
+    goarch:
+    - amd64
+    - arm64
+    env:
+    - CGO_ENABLED=1
+
+archives:
+  - id: netboard
+    format: binary
+    builds:
+    - netboard
+
+signs:
+  - artifacts: checksum
+    args: ["-u", "0C3214A61024881F5CA1F5F056EDB08A11DCE325", "--output", "${signature}", "--detach-sign", "${artifact}"]

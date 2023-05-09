@@ -8,7 +8,7 @@ BINDIR = $(PREFIX)/bin
 .PHONY: netboard
 
 netboard:
-	go build -trimpath .
+	CGO_ENABLED=1 go build -trimpath .
 
 default: netboard
 
