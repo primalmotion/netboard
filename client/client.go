@@ -84,11 +84,10 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 			}
 			defer resp.Body.Close() // nolint
 
-			buf := make([]byte, 1024)
-
 			for {
-				var chunk []byte
+				chunk := make([]byte, 0, 1024)
 				for {
+					buf := make([]byte, 0, 1024)
 					n, err := resp.Body.Read(buf)
 					if err != nil {
 						log.Printf("error: unable to read body: %s", err)

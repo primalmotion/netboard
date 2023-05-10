@@ -106,7 +106,7 @@ var listenCmd = &cobra.Command{
 				}
 
 				if !bytes.Equal(currentData, data) {
-					log.Println("local clipboard updated")
+					log.Println("remote clipboard changed. retrieving")
 					if err := cb.Write(data); err != nil {
 						log.Printf("unable to write to local clipboard: %s", err)
 						continue
