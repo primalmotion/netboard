@@ -2,7 +2,7 @@
 
 package cboard
 
-import "log"
+import "fmt"
 
 // / NewLibClipboardManager returns an error.
 func NewLibClipboardManager() (ClipboardManager, error) {
