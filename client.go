@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -90,27 +91,29 @@ var listenCmd = &cobra.Command{
 		watchChan := cb.Watch(cmd.Context())
 		listenChan := client.Listen(cmd.Context(), addr, tlsConf)
 
+		var lastPBHash []byte
 		for {
 			select {
+
 			case data := <-watchChan:
-				log.Println("local clipboard changed. pushing")
-				if err := client.Send(bytes.NewBuffer(data), addr, tlsConf); err != nil {
-					log.Printf("error sending data: %s", err)
+				dataHash := sha256.New().Sum(data)
+				if !bytes.Equal(lastPBHash, dataHash) {
+					log.Println("local clipboard changed. pushing")
+					if err := client.Send(bytes.NewBuffer(data), addr, tlsConf); err != nil {
+						log.Printf("error sending data: %s", err)
+					}
+					lastPBHash = sha256.New().Sum(data)
 				}
 
 			case data := <-listenChan:
-				currentData, err := cb.Read()
-				if err != nil {
-					log.Printf("unable to read from local clipboard: %s", err)
-					continue
-				}
-
-				if !bytes.Equal(currentData, data) {
+				dataHash := sha256.New().Sum(data)
+				if !bytes.Equal(lastPBHash, dataHash) {
 					log.Println("remote clipboard changed. retrieving")
 					if err := cb.Write(data); err != nil {
 						log.Printf("unable to write to local clipboard: %s", err)
 						continue
 					}
+					lastPBHash = sha256.New().Sum(data)
 				}
 
 			case <-cmd.Context().Done():
