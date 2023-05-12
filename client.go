@@ -98,9 +98,10 @@ var listenCmd = &cobra.Command{
 			case data := <-watchChan:
 				dataHash := sha256.New().Sum(data)
 				if !bytes.Equal(lastPBHash, dataHash) {
-					log.Println("local clipboard changed. pushing")
+					log.Println("local clipboard changed. updating remote")
 					if err := client.Send(bytes.NewBuffer(data), addr, tlsConf); err != nil {
 						log.Printf("error sending data: %s", err)
+						continue
 					}
 					lastPBHash = sha256.New().Sum(data)
 				}
@@ -108,7 +109,7 @@ var listenCmd = &cobra.Command{
 			case data := <-listenChan:
 				dataHash := sha256.New().Sum(data)
 				if !bytes.Equal(lastPBHash, dataHash) {
-					log.Println("remote clipboard changed. retrieving")
+					log.Println("remote clipboard changed. updating local")
 					if err := cb.Write(data); err != nil {
 						log.Printf("unable to write to local clipboard: %s", err)
 						continue
