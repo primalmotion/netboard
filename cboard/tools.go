@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"time"
 )
 
 type toolsClipboardManager struct {
@@ -31,9 +32,15 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 	cmd := exec.Command("wl-paste", "--no-newline")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("unable to init command: %w", err)
+		return nil, fmt.Errorf("unable to bind stdout: %w", err)
 	}
 	defer stdout.Close() // nolint
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("unable to bind stderr: %w", err)
+	}
+	defer stderr.Close() //nolint
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("unable to start command: %w", err)
@@ -41,11 +48,18 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 
 	data, err := io.ReadAll(stdout)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read stdin: %w", err)
+		return nil, fmt.Errorf("unable to read stdout: %w", err)
 	}
 
-	// wl-paste returns 1 when the clipboard is empty..
-	_ = cmd.Wait()
+	stderrData, err := io.ReadAll(stderr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read stderr: %w", err)
+	}
+	stderr.Close() // nolint
+
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("unable to run command: %w: stderr: %s", err, string(stderrData))
+	}
 
 	return data, nil
 }
@@ -55,9 +69,15 @@ func (c *toolsClipboardManager) Write(data []byte) error {
 	cmd := exec.Command("wl-copy", "--trim-newline")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("unable to init command: %w", err)
+		return fmt.Errorf("unable to bind stdin: %w", err)
 	}
 	defer stdin.Close() //nolint
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("unable to bind stderr: %w", err)
+	}
+	defer stderr.Close() //nolint
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("unable to start command: %w", err)
@@ -68,41 +88,64 @@ func (c *toolsClipboardManager) Write(data []byte) error {
 	}
 	stdin.Close() //nolint
 
-	return cmd.Wait()
+	stderrData, err := io.ReadAll(stderr)
+	if err != nil {
+		return fmt.Errorf("unable to read stderr: %w", err)
+	}
+	stderr.Close() // nolint
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("unable to run command: %w: stderr: %s", err, string(stderrData))
+	}
+
+	return nil
 }
 
-func (c *toolsClipboardManager) Watch(ctx context.Context) <-chan []byte {
+func (c *toolsClipboardManager) Watch(ctx context.Context) (<-chan []byte, <-chan error) {
 
-	ch := make(chan []byte)
+	chout := make(chan []byte)
+	cherr := make(chan error)
 
 	go func() {
 
-		cmd := exec.Command("wl-paste", "--no-newline", "-w", "echo")
+		for {
+			cmd := exec.Command("wl-paste", "--no-newline", "-w", "echo")
 
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			panic(err)
-		}
-
-		if err := cmd.Start(); err != nil {
-			panic(err)
-		}
-
-		scan := bufio.NewScanner(stdout)
-
-		for scan.Scan() {
-			data, err := c.Read()
+			stdout, err := cmd.StdoutPipe()
 			if err != nil {
-				panic(err)
+				cherr <- fmt.Errorf("unable to bind stdout: %w", err)
+				break
+			}
+			defer stdout.Close() //nolint
+
+			if err := cmd.Start(); err != nil {
+				cherr <- fmt.Errorf("unable to start command: %w", err)
+				break
 			}
 
-			select {
-			case ch <- data:
-			case <-ctx.Done():
-			default:
+			scan := bufio.NewScanner(stdout)
+
+			go func() {
+				for scan.Scan() {
+					data, err := c.Read()
+					if err != nil {
+						cherr <- fmt.Errorf("unable to scan stdout: %w", err)
+						return
+					}
+
+					select {
+					case chout <- data:
+					case <-ctx.Done():
+					default:
+					}
+				}
+			}()
+			if err := cmd.Wait(); err != nil {
+				cherr <- fmt.Errorf("error while listening wl-paste (restarting): %w", err)
+				time.Sleep(1 * time.Second)
 			}
 		}
 	}()
 
-	return ch
+	return chout, cherr
 }

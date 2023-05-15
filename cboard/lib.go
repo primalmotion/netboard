@@ -32,6 +32,7 @@ func (c *libClipboardManager) Write(data []byte) error {
 	return nil
 }
 
-func (c *libClipboardManager) Watch(ctx context.Context) <-chan []byte {
-	return clipboard.Watch(ctx, clipboard.FmtText)
+func (c *libClipboardManager) Watch(ctx context.Context) (<-chan []byte, <-chan error) {
+	chout := clipboard.Watch(ctx, clipboard.FmtText)
+	return chout, make(chan error)
 }

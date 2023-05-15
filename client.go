@@ -88,12 +88,14 @@ var listenCmd = &cobra.Command{
 			log.Fatalf("unknown mode %s", mode)
 		}
 
-		watchChan := cb.Watch(cmd.Context())
+		watchChan, watchErrChan := cb.Watch(cmd.Context())
 		listenChan := client.Listen(cmd.Context(), addr, tlsConf)
 
 		var lastPBHash []byte
 		for {
 			select {
+			case err := <-watchErrChan:
+				log.Printf("error during watch: %s", err)
 
 			case data := <-watchChan:
 				dataHash := sha256.New().Sum(data)
