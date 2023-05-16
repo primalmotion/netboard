@@ -2,6 +2,7 @@ package cboard
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -30,72 +31,33 @@ func NewToolsClipboardManager() (ClipboardManager, error) {
 func (c *toolsClipboardManager) Read() ([]byte, error) {
 
 	cmd := exec.Command("wl-paste", "--no-newline")
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("unable to bind stdout: %w", err)
-	}
-	defer stdout.Close() // nolint
 
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("unable to bind stderr: %w", err)
-	}
-	defer stderr.Close() //nolint
+	stdout := bytes.NewBuffer(nil)
+	cmd.Stdout = stdout
 
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start command: %w", err)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("unable to run command: %w", err)
 	}
 
-	data, err := io.ReadAll(stdout)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read stdout: %w", err)
-	}
-
-	stderrData, err := io.ReadAll(stderr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read stderr: %w", err)
-	}
-	stderr.Close() // nolint
-
-	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("unable to run command: %w: stderr: %s", err, string(stderrData))
-	}
-
-	return data, nil
+	return stdout.Bytes(), nil
 }
 
 func (c *toolsClipboardManager) Write(data []byte) error {
 
 	cmd := exec.Command("wl-copy", "--trim-newline")
+
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("unable to bind stdin: %w", err)
-	}
-	defer stdin.Close() //nolint
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("unable to bind stderr: %w", err)
-	}
-	defer stderr.Close() //nolint
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("unable to start command: %w", err)
+		return fmt.Errorf("unable to acquire stdin pipe: %w", err)
 	}
 
-	if _, err := stdin.Write(data); err != nil {
-		return fmt.Errorf("unable to write stdin: %w", err)
+	if _, err := io.Copy(stdin, bytes.NewBuffer(data)); err != nil {
+		return fmt.Errorf("unable to retrieve data from stdin pipe: %w", err)
 	}
-	stdin.Close() //nolint
+	stdin.Close()
 
-	stderrData, err := io.ReadAll(stderr)
-	if err != nil {
-		return fmt.Errorf("unable to read stderr: %w", err)
-	}
-	stderr.Close() // nolint
-
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("unable to run command: %w: stderr: %s", err, string(stderrData))
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("unable to wait command: %w", err)
 	}
 
 	return nil
