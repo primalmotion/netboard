@@ -1,79 +1,48 @@
 package server
 
 import (
-	"crypto/sha256"
+	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"fmt"
-	"io"
-	"log"
+	"errors"
+	"net"
 	"net/http"
+	"time"
 )
 
 // Serve starts the server that will handle and dispatch changes
 // to of the clipboard.
-func Serve(listenAddr string, tlsConf *tls.Config) error {
-	dispatch := newDispatcher()
+func Serve(ctx context.Context, listenAddr string, tlsConf *tls.Config) error {
 
 	server := http.Server{
 		Addr:      listenAddr,
 		TLSConfig: tlsConf,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
 	}
 
-	http.HandleFunc("/copy", func(w http.ResponseWriter, r *http.Request) {
+	dispatch := newDispatcher()
+	http.HandleFunc("/publish", makePublishHandler(dispatch))
+	http.HandleFunc("/subscribe/chunked", makeSubscribeChunkedHandler(dispatch))
+	http.HandleFunc("/subscribe/ws", makeSubscribeWSHandler(dispatch))
 
-		data, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("unable to read body: %s", err), http.StatusBadRequest)
+	// Start the server in a go routine
+	srvErrCh := make(chan error)
+	go func() {
+		err := server.ListenAndServeTLS("", "")
+		if !errors.Is(err, http.ErrServerClosed) {
+			srvErrCh <- err
 		}
+	}()
 
-		encoded := base64.RawURLEncoding.EncodeToString(data)
-		encoded = encoded + ","
-
-		id := computeID(r)
-		log.Printf("dispatched data from: %s", id)
-
-		dispatch.Dispatch(id, []byte(encoded))
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	http.HandleFunc("/paste", func(w http.ResponseWriter, r *http.Request) {
-
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			http.Error(w, "Streaming not supported", http.StatusBadRequest)
-			return
-		}
-
-		id := computeID(r)
-
-		dispatch.Register(id)
-		log.Printf("client registered: %s", id)
-		defer func() {
-			dispatch.Unregister(id)
-			log.Printf("client unregistered: %s", id)
-		}()
-
-		ch := dispatch.GetChannel(id)
-
-		for {
-			select {
-			case <-r.Context().Done():
-				flusher.Flush()
-				return
-			case c := <-ch:
-				if _, err := w.Write(c); err != nil {
-					log.Printf("unable to write chunk to client %s: %s", id, err)
-				}
-				flusher.Flush()
-			}
-		}
-	})
-
-	return server.ListenAndServeTLS("", "")
-}
-
-func computeID(r *http.Request) string {
-	cert := r.TLS.PeerCertificates[0]
-	return fmt.Sprintf("%02X", sha256.Sum256(cert.Raw)) // #nosec
+	// Wait for a shutdown indicator to either return the
+	// error or gracefully shutdown the server
+	select {
+	case err := <-srvErrCh:
+		return err
+	case <-ctx.Done():
+		closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return server.Shutdown(closeCtx)
+	}
 }

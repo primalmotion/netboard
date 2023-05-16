@@ -37,6 +37,7 @@ var listenCmd = &cobra.Command{
 		serverCAPath := os.ExpandEnv(viper.GetString("listen.server-ca"))
 		skipVerify := viper.GetBool("listen.insecure-skip-verify")
 		mode := viper.GetString("listen.mode")
+		useWebsocket := viper.GetBool("listen.websocket")
 
 		x509Cert, x509Key, err := tglib.ReadCertificatePEM(certPath, certKeyPath, certKeyPass)
 		if err != nil {
@@ -89,37 +90,47 @@ var listenCmd = &cobra.Command{
 		}
 
 		watchChan, watchErrChan := cb.Watch(cmd.Context())
-		listenChan := client.Listen(cmd.Context(), addr, tlsConf)
 
-		var lastPBHash []byte
+		var listenChan chan []byte
+		var listenDone chan struct{}
+		if useWebsocket {
+			listenChan, listenDone = client.SubscribeWS(cmd.Context(), addr, tlsConf)
+			log.Println("using websockets")
+		} else {
+			listenChan, listenDone = client.SubscribeChunked(cmd.Context(), addr, tlsConf)
+			log.Println("using chunked http encoding")
+		}
+
+		var lastH []byte
 		for {
 			select {
 			case err := <-watchErrChan:
 				log.Printf("error during watch: %s", err)
 
 			case data := <-watchChan:
-				dataHash := sha256.New().Sum(data)
-				if !bytes.Equal(lastPBHash, dataHash) {
+				h := sha256.New().Sum(data)
+				if !bytes.Equal(lastH, h) {
 					log.Println("local clipboard changed. updating remote")
-					if err := client.Send(bytes.NewBuffer(data), addr, tlsConf); err != nil {
+					if err := client.Publish(bytes.NewBuffer(data), addr, tlsConf); err != nil {
 						log.Printf("error sending data: %s", err)
 						continue
 					}
-					lastPBHash = dataHash
+					lastH = h
 				}
 
 			case data := <-listenChan:
-				dataHash := sha256.New().Sum(data)
-				if !bytes.Equal(lastPBHash, dataHash) {
+				h := sha256.New().Sum(data)
+				if !bytes.Equal(lastH, h) {
 					log.Println("remote clipboard changed. updating local")
 					if err := cb.Write(data); err != nil {
 						log.Printf("unable to write to local clipboard: %s", err)
 						continue
 					}
-					lastPBHash = dataHash
+					lastH = h
 				}
 
 			case <-cmd.Context().Done():
+				<-listenDone
 				return nil
 			}
 		}
@@ -147,4 +158,7 @@ func init() {
 
 	listenCmd.Flags().String("mode", "wl-clipboard", "Select the mode to handle clipboard. wl-clipboard or lib")
 	_ = viper.BindPFlag("listen.mode", listenCmd.Flags().Lookup("mode"))
+
+	listenCmd.Flags().BoolP("websocket", "w", true, "Use websockets instead of chunked encoding")
+	_ = viper.BindPFlag("listen.websocket", listenCmd.Flags().Lookup("websocket"))
 }

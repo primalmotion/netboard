@@ -4,48 +4,17 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
 )
 
-// Send sends the content of the given reader to the given url
-// using the given tls config.
-func Send(data io.Reader, url string, tlsConfig *tls.Config) error {
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
-	}
-
-	r, err := http.NewRequest(http.MethodPost, url+"/copy", data)
-	if err != nil {
-		return fmt.Errorf("unable to build request: %w", err)
-	}
-
-	resp, err := client.Do(r)
-	if err != nil {
-		return fmt.Errorf("unable to send request: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("server rejected the request: %s", resp.Status)
-	}
-
-	log.Println("data dispatched")
-
-	return nil
-}
-
-// Listen listens for new updates from the server.
-// It will stay connected, and retry connection until the
-// given context expires.
-func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte {
+// SubscribeChunked connects to the remote server and will get clipbiard updates using
+// HTTP chunked encoding.
+func SubscribeChunked(ctx context.Context, url string, tlsConfig *tls.Config) (chan []byte, chan struct{}) {
 
 	ch := make(chan []byte, 512)
+	done := make(chan struct{})
 
 	go func() {
 		client := &http.Client{
@@ -64,7 +33,7 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 			}
 			isReconnect = true
 
-			r, err := http.NewRequestWithContext(ctx, http.MethodGet, url+"/paste", nil)
+			r, err := http.NewRequestWithContext(ctx, http.MethodGet, url+"/subscribe/chunked", nil)
 			if err != nil {
 				log.Printf("unable to build request: %s", err)
 				continue
@@ -116,6 +85,7 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 				case ch <- decoded[:n]:
 					log.Println("data received: sent to channel")
 				case <-ctx.Done():
+					close(done)
 					return
 				default:
 					log.Println("data received: channel full")
@@ -124,5 +94,5 @@ func Listen(ctx context.Context, url string, tlsConfig *tls.Config) chan []byte 
 		}
 	}()
 
-	return ch
+	return ch, done
 }

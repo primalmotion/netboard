@@ -1,8 +1,16 @@
 package server
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"net/http"
 	"sync"
 )
+
+func computeID(r *http.Request) string {
+	cert := r.TLS.PeerCertificates[0]
+	return fmt.Sprintf("%02X", sha256.Sum256(cert.Raw)) // #nosec
+}
 
 type dispatcher struct {
 	sync.RWMutex
