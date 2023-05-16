@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"go.aporeto.io/wsc"
@@ -26,7 +27,10 @@ func makeSubscribeWSHandler(dispatch *dispatcher) func(http.ResponseWriter, *htt
 			return
 		}
 
-		conn, err := wsc.Accept(r.Context(), ws, wsc.Config{})
+		conn, err := wsc.Accept(r.Context(), ws, wsc.Config{
+			PingPeriod: 15 * time.Minute,
+			PongWait:   20 * time.Minute,
+		})
 		if err != nil {
 			http.Error(
 				w,

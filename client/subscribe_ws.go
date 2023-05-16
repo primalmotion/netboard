@@ -43,7 +43,12 @@ func SubscribeWS(ctx context.Context, url string, tlsConfig *tls.Config) (chan [
 			conn, resp, err := wsc.Connect(
 				ctx,
 				strings.Replace(url+"/subscribe/ws", "https", "wss", 1),
-				wsc.Config{TLSConfig: tlsConfig},
+				wsc.Config{
+					TLSConfig:          tlsConfig,
+					NetDialContextFunc: netDialContextFunc, // this function is platform dependent.
+					PingPeriod:         15 * time.Minute,
+					PongWait:           20 * time.Minute,
+				},
 			)
 			if err != nil {
 				log.Printf("unable to connect to ws (retrying): %s", err)
