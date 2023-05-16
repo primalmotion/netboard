@@ -54,7 +54,7 @@ func (c *toolsClipboardManager) Write(data []byte) error {
 	if _, err := io.Copy(stdin, bytes.NewBuffer(data)); err != nil {
 		return fmt.Errorf("unable to retrieve data from stdin pipe: %w", err)
 	}
-	stdin.Close()
+	stdin.Close() //nolint
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("unable to wait command: %w", err)
