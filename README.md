@@ -26,6 +26,12 @@ go install git.sr.ht/~primalmotion/netboard@latest
 The software is also packaged for Arch Linux and derivatives from the AUR:
 
 ```
+yay -S netboard
+```
+
+Alternatively, if you want to use latest and greatest:
+
+```
 yay -S netboard-git
 ```
 
