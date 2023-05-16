@@ -20,7 +20,7 @@ perfectly possible to integrate it with anything else, like good old curl.
 Using Go:
 
 ```
-go install git.sr.ht/~primalmotion/netboard@latest
+go install github.com/primalmotion/netboard@latest
 ```
 
 The software is also packaged for Arch Linux and derivatives from the AUR:
