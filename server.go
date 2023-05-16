@@ -58,7 +58,7 @@ var serverCmd = &cobra.Command{
 			ClientCAs:    clientCAPool,
 		}
 
-		return server.Serve(listenAddr, tlsConf)
+		return server.Serve(cmd.Context(), listenAddr, tlsConf)
 	},
 }
 
