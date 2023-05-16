@@ -105,7 +105,7 @@ var listenCmd = &cobra.Command{
 						log.Printf("error sending data: %s", err)
 						continue
 					}
-					lastPBHash = sha256.New().Sum(data)
+					lastPBHash = dataHash
 				}
 
 			case data := <-listenChan:
@@ -116,7 +116,7 @@ var listenCmd = &cobra.Command{
 						log.Printf("unable to write to local clipboard: %s", err)
 						continue
 					}
-					lastPBHash = sha256.New().Sum(data)
+					lastPBHash = dataHash
 				}
 
 			case <-cmd.Context().Done():
