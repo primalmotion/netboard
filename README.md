@@ -4,9 +4,9 @@ Netboard is a client/server application that allows to share your clipboard
 between different devices. It works by deploying a server, then running client
 on your devices to sync the clipboard.
 
-The server uses chunked http encoding to push data to client, and while it is
-easier to handle the client part with the netboard client, it's perfectly
-possible to integrate it with anything else, like good old curl.
+The server uses websockets or chunked http encoding to push data to client, and
+while it is easier to handle the client part with the netboard client, it's
+perfectly possible to integrate it with anything else, like good old curl.
 
 > NOTE: netboard is NOT multi tenant. While it is possible to add it if there is
 > any interest in the matter, for now it just assumes that anyone connecting
@@ -118,7 +118,8 @@ netboard listen
 Repeat the process for every other clients you want to have all their clipboard
 synced.
 
-## Modes
+
+## Clipboard management modes
 
 The netboard client can run using 2 modes, controlled by the `--mode` flag:
 
@@ -129,3 +130,76 @@ The netboard client can run using 2 modes, controlled by the `--mode` flag:
 
 More modes may come, as well as a smart way to choose the best for the current
 platform.
+
+
+## Clipboard listening mode
+
+You can choose to use either chunked HTTP encoding (`--websocket false`) or
+websockets (`--websocket true`, the default). Websocket should offer better and
+faster pushes and connectivity loss detection.
+
+
+## Usage
+
+
+### Main command
+
+```
+$ netboard --help
+Simple and secure network clipboard sharing engine
+
+Usage:
+  netboard [flags]
+  netboard [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  listen      Sync data between clipboard and server
+  server      Run the server
+
+Flags:
+  -h, --help      help for netboard
+      --version   Show version
+
+Use "netboard [command] --help" for more information about a command.
+```
+
+### Server command
+
+```
+$ netboard server --help
+Run the server
+
+Usage:
+  netboard server [flags]
+
+Flags:
+  -c, --cert string            path to the server public key
+  -k, --cert-key string        path to the server private key
+  -p, --cert-key-pass string   optional server key passphrase
+  -C, --client-ca string       path to the client certificate CA
+  -h, --help                   help for server
+  -l, --listen string          The listen address of the server (default ":8989")
+```
+
+### Listen command
+
+```
+$ netboard listen --help
+Sync data between clipboard and server
+
+Usage:
+  netboard listen [flags]
+
+Flags:
+  -c, --cert string            Path to the client public key
+  -k, --cert-key string        Path to the client private key
+  -p, --cert-key-pass string   Optional client key passphrase
+  -h, --help                   help for listen
+      --insecure-skip-verify   Skip server CA validation. this is not secure
+      --mode string            Select the mode to handle clipboard. wl-clipboard or lib (default "wl-clipboard")
+  -C, --server-ca string       Path to the server certificate CA
+  -u, --url string             The address of the netboard server (default "https://127.0.0.1:8989")
+  -w, --websocket              Use websockets instead of chunked encoding (default true)
+```
