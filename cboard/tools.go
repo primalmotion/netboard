@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"time"
 )
 
 type toolsClipboardManager struct {
@@ -70,42 +69,51 @@ func (c *toolsClipboardManager) Watch(ctx context.Context) (<-chan []byte, <-cha
 
 	go func() {
 
-		for {
-			cmd := exec.Command("wl-paste", "--no-newline", "-w", "echo")
+		cmd := exec.Command("wl-paste", "--no-newline", "-w", "echo")
 
-			stdout, err := cmd.StdoutPipe()
-			if err != nil {
-				cherr <- fmt.Errorf("unable to bind stdout: %w", err)
-				break
-			}
-			defer stdout.Close() //nolint
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			cherr <- fmt.Errorf("unable to bind stdout: %w", err)
+			return
+		}
+		defer stdout.Close() //nolint
 
-			if err := cmd.Start(); err != nil {
-				cherr <- fmt.Errorf("unable to start command: %w", err)
-				break
-			}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			cherr <- fmt.Errorf("unable to bind stderr: %w", err)
+			return
+		}
+		defer stderr.Close() //nolint
 
-			scan := bufio.NewScanner(stdout)
+		buf := bytes.NewBuffer(nil)
+		go func() {
+			io.Copy(buf, stderr)
+		}()
 
-			go func() {
-				for scan.Scan() {
-					data, err := c.Read()
-					if err != nil {
-						cherr <- fmt.Errorf("unable to scan stdout: %w", err)
-						return
-					}
+		if err := cmd.Start(); err != nil {
+			cherr <- fmt.Errorf("unable to start command: %w", err)
+			return
+		}
 
-					select {
-					case chout <- data:
-					case <-ctx.Done():
-					default:
-					}
+		scan := bufio.NewScanner(stdout)
+
+		go func() {
+			for scan.Scan() {
+				data, err := c.Read()
+				if err != nil {
+					cherr <- fmt.Errorf("unable to scan stdout: %w", err)
+					return
 				}
-			}()
-			if err := cmd.Wait(); err != nil {
-				cherr <- fmt.Errorf("error while listening wl-paste (restarting): %w", err)
-				time.Sleep(1 * time.Second)
+
+				select {
+				case chout <- data:
+				case <-ctx.Done():
+				default:
+				}
 			}
+		}()
+		if err := cmd.Wait(); err != nil {
+			cherr <- fmt.Errorf("error while listening wl-paste: %w", err)
 		}
 	}()
 

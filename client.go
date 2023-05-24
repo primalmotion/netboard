@@ -105,7 +105,7 @@ var listenCmd = &cobra.Command{
 		for {
 			select {
 			case err := <-watchErrChan:
-				log.Printf("error during watch: %s", err)
+				return fmt.Errorf("error during watch: %w", err)
 
 			case data := <-watchChan:
 				h := sha256.New().Sum(data)
