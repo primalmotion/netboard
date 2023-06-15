@@ -40,8 +40,11 @@ func SubscribeWS(ctx context.Context, url string, tlsConfig *tls.Config) (chan [
 			}
 			isReconnect = true
 
+			wsctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			conn, resp, err := wsc.Connect(
-				ctx,
+				wsctx,
 				strings.Replace(url+"/subscribe/ws", "https", "wss", 1),
 				wsc.Config{
 					TLSConfig:          tlsConfig,
@@ -52,11 +55,13 @@ func SubscribeWS(ctx context.Context, url string, tlsConfig *tls.Config) (chan [
 			)
 			if err != nil {
 				log.Printf("unable to connect to ws (retrying): %s", err)
+				cancel()
 				continue
 			}
 
 			if resp.StatusCode != http.StatusSwitchingProtocols {
 				log.Printf("server rejected ws connection (retrying): %s", err)
+				cancel()
 				continue
 			}
 
@@ -71,6 +76,7 @@ func SubscribeWS(ctx context.Context, url string, tlsConfig *tls.Config) (chan [
 					} else {
 						log.Println("ws server gone. reconnecting...")
 					}
+					cancel()
 					continue MAINWS
 
 				case data := <-conn.Read():
