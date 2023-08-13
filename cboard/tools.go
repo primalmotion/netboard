@@ -9,6 +9,8 @@ import (
 	"os/exec"
 )
 
+const ClipboardEmptyErrorString = "Nothing is copied\n"
+
 type toolsClipboardManager struct {
 }
 
@@ -33,9 +35,14 @@ func (c *toolsClipboardManager) Read() ([]byte, error) {
 
 	stdout := bytes.NewBuffer(nil)
 	cmd.Stdout = stdout
+	stderr := bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("unable to run command: %w", err)
+		if stderr.String() == ClipboardEmptyErrorString {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to run read command: %w", err)
 	}
 
 	return stdout.Bytes(), nil
@@ -103,6 +110,10 @@ func (c *toolsClipboardManager) Watch(ctx context.Context) (<-chan []byte, <-cha
 				if err != nil {
 					cherr <- fmt.Errorf("unable to scan stdout: %w", err)
 					return
+				}
+
+				if len(data) <= 0 {
+					continue
 				}
 
 				select {
